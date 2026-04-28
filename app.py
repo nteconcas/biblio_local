@@ -1,4 +1,5 @@
 import os
+import time
 from dotenv import load_dotenv
 from flask import Flask, redirect, url_for
 from flask_login import current_user
@@ -14,20 +15,22 @@ from routes.labels import labels_bp
 
 load_dotenv()
 
+def env_bool(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in ('1', 'true', 'yes', 'on')
+
 def create_app():
     app = Flask(__name__)
 
-    # ── Proxy Fix ──────────────────────────────────────────────
-    # Render / Heroku / qualquer PaaS termina o TLS no proxy reverso
-    # e repassa a requisição via HTTP interno.  Sem este middleware
-    # o Flask gera urls com http:// nos redirects e no url_for(),
-    # o que faz o navegador marcar a página como "insegura".
+    trusted_proxies = int(os.environ.get('TRUST_PROXY_COUNT', '1'))
     app.wsgi_app = ProxyFix(
         app.wsgi_app,
-        x_for=1,       # X-Forwarded-For   (IP real do cliente)
-        x_proto=1,     # X-Forwarded-Proto (https)
-        x_host=1,      # X-Forwarded-Host  (domínio real)
-        x_port=1       # X-Forwarded-Port  (443)
+        x_for=trusted_proxies,
+        x_proto=trusted_proxies,
+        x_host=trusted_proxies,
+        x_port=trusted_proxies
     )
     
     # Prioridade para DATABASE_URL (comum em Heroku/Render)
@@ -44,10 +47,15 @@ def create_app():
         name = os.environ.get('DB_NAME', 'biblio_db')
         db_url = f"postgresql://{user}:{pwd}@{host}:{port}/{name}"
 
+    preferred_scheme = os.environ.get('PREFERRED_URL_SCHEME', 'http')
+    secure_cookies = env_bool('COOKIE_SECURE', preferred_scheme == 'https')
+
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'dev-key-altere-em-producao')
     app.config['SQLALCHEMY_DATABASE_URI'] = db_url
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    app.config['PREFERRED_URL_SCHEME'] = 'https'
+    app.config['PREFERRED_URL_SCHEME'] = preferred_scheme
+    app.config['SESSION_COOKIE_SECURE'] = secure_cookies
+    app.config['REMEMBER_COOKIE_SECURE'] = secure_cookies
 
     # Inicializar extensões
     db.init_app(app)
@@ -68,12 +76,11 @@ def create_app():
 
     @app.after_request
     def set_security_headers(response):
-        # Força o navegador a usar HTTPS em todas as requisições futuras
-        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-        # Atualiza automaticamente recursos http:// para https://
-        response.headers['Content-Security-Policy'] = "upgrade-insecure-requests"
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+        if env_bool('ENABLE_HTTPS_HEADERS', preferred_scheme == 'https'):
+            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+            response.headers['Content-Security-Policy'] = 'upgrade-insecure-requests'
         return response
 
     @login_manager.user_loader
@@ -86,8 +93,11 @@ def create_app():
             return redirect(url_for('loans.loans_page'))
         return redirect(url_for('auth.login'))
 
+    @app.get('/health')
+    def health():
+        return {'status': 'ok'}, 200
+
     # Inicialização do Banco de Dados com Retry (para Docker)
-    import time
     with app.app_context():
         max_retries = 5
         for i in range(max_retries):
@@ -132,4 +142,8 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True, port=5000, host='0.0.0.0')
+    app.run(
+        debug=env_bool('FLASK_DEBUG', False),
+        port=int(os.environ.get('PORT', '5000')),
+        host='0.0.0.0'
+    )
