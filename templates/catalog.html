@@ -1,0 +1,431 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  @media (max-width: 768px) {
+    .catalog-table .col-hide-mobile { display: none; }
+    .catalog-search-local { max-width: 100% !important; width: 100% !important; }
+    .catalog-search-local .form-control { min-width: 0; }
+    .catalog-header { flex-direction: column; align-items: flex-start !important; gap: 0.75rem; }
+    .btn-group { flex-wrap: wrap; }
+    .btn-group .btn { font-size: 0.75rem; }
+    /* Book title area */
+    td .d-flex { gap: 0.5rem !important; }
+    td div[style*="max-width: 300px"] { max-width: 160px !important; }
+  }
+  @media (max-width: 480px) {
+    td div[style*="max-width: 300px"] { max-width: 120px !important; }
+    .catalog-table img, .catalog-table div[style*="width: 40px"] { display: none !important; }
+  }
+</style>
+<h2>📖 Catálogo de Acervo</h2>
+
+<!-- Busca Brasil API & Cadastro Manual -->
+<div class="row g-3 mb-4">
+  <div class="col-12 col-lg-9">
+    <div class="card p-3 h-100">
+      <h5 class="mb-3">🔍 Buscar na Brasil API</h5>
+      <form action="/search_brasilapi" method="POST" class="row g-2 align-items-end">
+        <div class="col-md-3 col-sm-4">
+          <select name="search_type" class="form-select">
+            <option value="isbn" {% if last_type == 'isbn' %}selected{% endif %}>ISBN</option>
+            <option value="title" {% if last_type == 'title' %}selected{% endif %}>Título (limitado)</option>
+          </select>
+        </div>
+        <div class="col-md-6 col-sm-5 text-truncate">
+          <input name="query" class="form-control" placeholder="ISBN (ex: 9788532511010)" value="{{ last_query or '' }}">
+        </div>
+        <div class="col-md-3 col-sm-3">
+          <button type="submit" class="btn btn-primary w-100">🔍 Buscar</button>
+        </div>
+      </form>
+      <small class="text-muted mt-2">💡 A Brasil API funciona melhor com ISBN-13. Ex: <code>9788532511010</code></small>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-3">
+    <div class="card p-3 h-100 d-flex align-items-center justify-content-center border-dashed border-success bg-success-subtle">
+      <button type="button" class="btn btn-success w-100 py-3 fw-bold" data-bs-toggle="modal" data-bs-target="#manualAddModal">
+        ➕ Cadastro Manual
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Cadastro Manual -->
+<div class="modal fade" id="manualAddModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">📄 Cadastro Manual de Livro</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="/add_book_manual" method="POST">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label">TÍTULO *</label>
+              <input type="text" name="title" class="form-control" required placeholder="Ex: Dom Casmurro">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">ISBN</label>
+              <input type="text" name="isbn" class="form-control" placeholder="Opcional">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">AUTOR</label>
+              <input type="text" name="author" class="form-control" placeholder="Ex: Machado de Assis">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">GÊNERO</label>
+              <input type="text" name="genre" class="form-control" placeholder="Ex: Romance, Suspense">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">CLASSIFICAÇÃO</label>
+              <input type="text" name="classification" class="form-control" placeholder="Ex: +14, Literatura Brasileira">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">QUANTIDADE DE EXEMPLARES</label>
+              <input type="number" name="quantity" class="form-control" value="1" min="1">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">ANO DE PUBLICAÇÃO</label>
+              <input type="number" name="year" class="form-control" placeholder="Ex: 1899">
+            </div>
+            <div class="col-12">
+              <label class="form-label">OBSERVAÇÕES</label>
+              <textarea name="observations" class="form-control" rows="3" placeholder="Detalhes adicionais..."></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Salvar Cadastro</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Resultados da API -->
+{% if results %}
+<div class="row g-3 mb-4">
+  {% for r in results %}
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex gap-3">
+          {% if r.cover_url %}
+            <img src="{{ r.cover_url }}" style="height:100px; object-fit:cover; border-radius:4px;">
+          {% endif %}
+          <div>
+            <h5 class="mb-1">{{ r.title }}</h5>
+            <p class="text-muted mb-1">{{ r.author }} {% if r.year %}• {{ r.year }}{% endif %}</p>
+            {% if r.publisher %}<small class="d-block text-muted">{{ r.publisher }}</small>{% endif %}
+            <small class="fw-bold">ISBN: {{ r.isbn }}</small>
+            {% if r.synopsis %}<p class="small mt-2 text-muted">{{ r.synopsis }}</p>{% endif %}
+            <form action="/add_from_api" method="POST" class="mt-2 row g-2">
+              <input type="hidden" name="title" value="{{ r.title }}">
+              <input type="hidden" name="author" value="{{ r.author }}">
+              <input type="hidden" name="isbn" value="{{ r.isbn }}">
+              <input type="hidden" name="year" value="{{ r.year or '' }}">
+              <input type="hidden" name="publisher" value="{{ r.publisher or '' }}">
+              <input type="hidden" name="cover_url" value="{{ r.cover_url or '' }}">
+              <div class="col-auto">
+                <input type="number" name="quantity" class="form-control form-control-sm" value="1" min="1" style="width: 60px;" title="Quantidade de cópias">
+              </div>
+              <div class="col-auto">
+                <button type="submit" class="btn btn-sm btn-success">➕ Importar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Acervo Local -->
+<div class="d-flex justify-content-between align-items-center mt-5 mb-3 catalog-header">
+  <h4 class="mb-0">📚 Livros no Acervo</h4>
+  
+  <!-- Busca Local -->
+  <form action="/catalog" method="GET" class="d-flex gap-2 catalog-search-local" style="max-width: 400px;">
+    <input type="text" name="q" class="form-control form-control-sm" placeholder="Buscar no acervo local..." value="{{ last_query or '' }}">
+    <button type="submit" class="btn btn-sm btn-primary">🔍</button>
+    {% if last_query %}
+      <a href="/catalog" class="btn btn-sm btn-outline-secondary">Limpar</a>
+    {% endif %}
+  </form>
+</div>
+
+<div class="table-responsive bg-white rounded shadow-sm border-0">
+    <table class="table table-hover align-middle mb-0 catalog-table">
+      <thead class="bg-light text-secondary small text-uppercase">
+        <tr>
+          <th class="ps-4">Obra / Título</th>
+          <th class="col-hide-mobile">ISBN</th>
+          <th class="col-hide-mobile">Gênero / Categoria</th>
+          <th class="col-hide-mobile">Classificação</th>
+          <th>Acervo</th>
+          <th class="text-end pe-4">Ações</th>
+        </tr>
+      </thead>
+      <tbody class="border-top-0">
+        {% for b in books %}
+        <tr>
+          <td class="ps-4">
+            <div class="d-flex align-items-center">
+              {% if b.cover_url %}
+                <img src="{{ b.cover_url }}" class="rounded me-3 shadow-sm" style="width: 40px; height: 55px; object-fit: cover;">
+              {% else %}
+                <div class="bg-light rounded me-3 d-flex align-items-center justify-content-center text-muted shadow-sm" style="width: 40px; height: 55px; font-size: 1.5rem;">📖</div>
+              {% endif %}
+              <div style="max-width: 300px;">
+                <div class="fw-bold text-dark text-truncate">{{ b.title }}</div>
+                <div class="text-muted small text-truncate">
+                  {{ b.author or 'Autor não informado' }} {% if b.publication_year %}({{ b.publication_year }}){% endif %}
+                </div>
+                {% if b.observations %}
+                  <small class="text-info d-block text-truncate" style="font-size: 0.75rem;">📝 {{ b.observations }}</small>
+                {% endif %}
+              </div>
+            </div>
+          </td>
+          <td class="col-hide-mobile"><code class="text-muted small">{{ b.isbn or '-' }}</code></td>
+          <td class="col-hide-mobile">
+            <span class="badge rounded-pill bg-light text-dark border px-3">{{ b.genre or 'Geral' }}</span>
+          </td>
+          <td class="col-hide-mobile">
+            <span class="badge rounded-pill bg-primary-subtle text-primary border px-3">{{ b.classification or '-' }}</span>
+          </td>
+          <td>
+            <div class="fw-bold">{{ b.copies|length }}</div>
+            <small class="text-muted">exemplares</small>
+          </td>
+          <td class="text-end pe-4">
+            <div class="btn-group shadow-sm">
+              <button type="button" class="btn btn-sm btn-outline-primary btn-edit-book" 
+                      data-id="{{ b.id }}"
+                      data-title="{{ b.title|forceescape }}"
+                      data-author="{{ (b.author or "")|forceescape }}"
+                      data-isbn="{{ (b.isbn or "")|forceescape }}"
+                      data-genre="{{ (b.genre or "")|forceescape }}"
+                      data-classification="{{ (b.classification or "")|forceescape }}"
+                      data-year="{{ b.publication_year or "" }}"
+                      data-observations="{{ (b.observations or "")|forceescape }}"
+                      data-copies='{{ b.copies|map(attribute="id")|list|tojson }}'
+                      data-copies-info='{{ b.copies|selectattr("status", "ne", "loaned")|map(attribute="barcode")|list|tojson }}'
+                      data-copies-full='[{% for c in b.copies %}{"id":{{c.id}},"barcode":"{{c.barcode}}","status":"{{c.status}}"}{% if not loop.last %},{% endif %}{% endfor %}]'>
+                ✏️ Editar
+              </button>
+              <a href="/report/book/{{ b.id }}" class="btn btn-sm btn-outline-secondary">📊 Histórico</a>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center py-5 text-muted">Ainda não há livros cadastrados no catálogo.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+</div>
+
+<!-- Paginação -->
+{% if pagination and pagination.pages > 1 %}
+<nav class="mt-4">
+  <ul class="pagination justify-content-center">
+    {% if pagination.has_prev %}
+      <li class="page-item"><a class="page-link" href="{{ url_for('catalog.catalog', page=pagination.prev_num, q=last_query) }}">Anterior</a></li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+    {% endif %}
+
+    {% for p in pagination.iter_pages() %}
+        {% if p %}
+            <li class="page-item {{ 'active' if p == pagination.page else '' }}">
+                <a class="page-link" href="{{ url_for('catalog.catalog', page=p, q=last_query) }}">{{ p }}</a>
+            </li>
+        {% else %}
+            <li class="page-item disabled"><span class="page-link">...</span></li>
+        {% endif %}
+    {% endfor %}
+
+    {% if pagination.has_next %}
+      <li class="page-item"><a class="page-link" href="{{ url_for('catalog.catalog', page=pagination.next_num, q=last_query) }}">Próximo</a></li>
+    {% else %}
+      <li class="page-item disabled"><span class="page-link">Próximo</span></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+<!-- Modal de Edição -->
+<div class="modal fade" id="editBookModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">✏️ Editar Livro</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editBookForm" method="POST">
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label">TÍTULO *</label>
+              <input type="text" name="title" id="edit-title" class="form-control" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">ISBN</label>
+              <input type="text" name="isbn" id="edit-isbn" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">AUTOR</label>
+              <input type="text" name="author" id="edit-author" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">GÊNERO</label>
+              <input type="text" name="genre" id="edit-genre" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">CLASSIFICAÇÃO</label>
+              <input type="text" name="classification" id="edit-classification" class="form-control">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">ANO</label>
+              <input type="number" name="year" id="edit-year" class="form-control">
+            </div>
+            <div class="col-12">
+              <label class="form-label">OBSERVAÇÕES</label>
+              <textarea name="observations" id="edit-observations" class="form-control" rows="3"></textarea>
+            </div>
+          </div>
+          <hr>
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <span>Adicionar nova cópia física a este título:</span>
+            <button type="button" id="add-copy-btn" class="btn btn-sm btn-outline-success" onclick="setActionAddCopy()">+1 Cópia</button>
+          </div>
+          <div id="copies-list-container" class="mt-2">
+            <table class="table table-sm table-bordered small">
+              <thead class="table-light">
+                <tr>
+                  <th>Código</th>
+                  <th>Status</th>
+                  <th class="text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="copies-list-body">
+                <!-- Populados via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between">
+          <button type="button" class="btn btn-outline-danger" onclick="setActionDelete()">🗑️ Excluir Obra</button>
+          <div>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="setActionEdit()">Salvar Alterações</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentBookId;
+// Espera o DOM carregar para inicializar o Modal
+document.addEventListener('DOMContentLoaded', () => {
+    const editModalEl = document.getElementById('editBookModal');
+    if (editModalEl) {
+        window.editModal = new bootstrap.Modal(editModalEl);
+    }
+});
+const editForm = document.getElementById('editBookForm');
+
+// Event Listener para todos os botões de edição
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.btn-edit-book');
+  if (btn) {
+    currentBookId = btn.getAttribute('data-id');
+    
+    document.getElementById('edit-title').value = btn.getAttribute('data-title');
+    document.getElementById('edit-author').value = btn.getAttribute('data-author');
+    document.getElementById('edit-isbn').value = btn.getAttribute('data-isbn');
+    document.getElementById('edit-genre').value = btn.getAttribute('data-genre');
+    document.getElementById('edit-classification').value = btn.getAttribute('data-classification');
+    document.getElementById('edit-year').value = btn.getAttribute('data-year');
+    document.getElementById('edit-observations').value = btn.getAttribute('data-observations');
+    
+    window.editModal.show();
+    
+    // Popular lista de cópias
+    const copiesFull = JSON.parse(btn.getAttribute('data-copies-full') || '[]');
+    const copiesBody = document.getElementById('copies-list-body');
+    copiesBody.innerHTML = '';
+    
+    copiesFull.forEach(c => {
+      const row = document.createElement('tr');
+      let statusBadge = '';
+      let actionBtn = '';
+      
+      if (c.status === 'available') {
+        statusBadge = '<span class="badge bg-success">Disponível</span>';
+        actionBtn = `<button type="button" class="btn btn-outline-warning" style="padding: 0.1rem 0.3rem; font-size: 0.7rem;" onclick="decommissionCopy(${c.id}, '${c.barcode}')">Dar Baixa</button>`;
+      } else if (c.status === 'loaned' || c.status === 'borrowed') {
+        statusBadge = '<span class="badge bg-primary">Emprestado</span>';
+        actionBtn = '<small class="text-muted">Indisponível</small>';
+      } else if (c.status === 'decommissioned') {
+        statusBadge = '<span class="badge bg-secondary">Baixa</span>';
+        actionBtn = `<button type="button" class="btn btn-outline-success" style="padding: 0.1rem 0.3rem; font-size: 0.7rem;" onclick="activateCopy(${c.id}, '${c.barcode}')">Reativar</button>`;
+      }
+      
+      row.innerHTML = `
+        <td class="align-middle">${c.barcode}</td>
+        <td class="align-middle">${statusBadge}</td>
+        <td class="text-center">${actionBtn}</td>
+      `;
+      copiesBody.appendChild(row);
+    });
+  }
+});
+
+function setActionEdit() {
+  editForm.action = `/edit_book/${currentBookId}`;
+  editForm.submit();
+}
+
+function setActionAddCopy(e) {
+  editForm.action = `/add_copy/${currentBookId}`;
+  editForm.submit();
+}
+
+function setActionDelete() {
+  if (confirm('⚠️ TEM CERTEZA? Isso excluirá permanentemente esta obra e TODOS os seus exemplares e históricos.')) {
+    editForm.action = `/delete_book/${currentBookId}`;
+    editForm.submit();
+  }
+}
+
+function decommissionCopy(id, barcode) {
+  if (confirm(`Deseja dar baixa no exemplar ${barcode}? Ele continuará no registro mas não poderá ser emprestado.`)) {
+    const tempForm = document.createElement('form');
+    tempForm.method = 'POST';
+    tempForm.action = `/decommission_copy/${id}`;
+    document.body.appendChild(tempForm);
+    tempForm.submit();
+  }
+}
+
+function activateCopy(id, barcode) {
+  if (confirm(`Deseja reativar o exemplar ${barcode}?`)) {
+    const tempForm = document.createElement('form');
+    tempForm.method = 'POST';
+    tempForm.action = `/activate_copy/${id}`;
+    document.body.appendChild(tempForm);
+    tempForm.submit();
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2>📊 Portal de Relatórios</h2>
+</div>
+
+<div class="row g-4">
+  <!-- Relatório de Acervo -->
+  <div class="col-12 col-md-4">
+    <div class="card h-100 shadow-sm border-0">
+      <div class="card-body text-center p-4">
+        <div class="display-4 mb-3">📚</div>
+        <h5 class="card-title fw-bold">Acervo Completo</h5>
+        <p class="text-muted small">Lista detalhada de todos os livros cadastrados, incluindo autores, ISBN e quantidade de cópias.</p>
+        <a href="/report/export/catalog.csv" class="btn btn-primary w-100 py-2">📥 Baixar Planilha (.csv)</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Relatório de Usuários -->
+  <div class="col-md-4">
+    <div class="card h-100 shadow-sm border-0">
+      <div class="card-body text-center p-4">
+        <div class="display-4 mb-3">👥</div>
+        <h5 class="card-title fw-bold">Base de Usuários</h5>
+        <p class="text-muted small">Relatório de todos os leitores e administradores cadastrados com suas respectivas matrículas.</p>
+        <a href="/report/export/users.csv" class="btn btn-primary w-100 py-2">📥 Baixar Planilha (.csv)</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Relatório de Movimentação -->
+  <div class="col-md-4">
+    <div class="card h-100 shadow-sm border-0">
+      <div class="card-body text-center p-4">
+        <div class="display-4 mb-3">🔄</div>
+        <h5 class="card-title fw-bold">Movimentação (Empréstimos)</h5>
+        <p class="text-muted small">Histórico completo: quem pegou o quê, quando pegou e quando devolveu, incluindo status e multas.</p>
+        <a href="/report/export/loans.csv" class="btn btn-primary w-100 py-2">📥 Baixar Planilha (.csv)</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mt-5 alert alert-warning border-0 shadow-sm">
+  <div class="d-flex gap-3 align-items-center">
+    <div class="fs-2">💡</div>
+    <div>
+      <strong>Dica para Excel:</strong> Ao abrir o arquivo CSV no Excel, use o caractere de separação <strong>Ponto e Vírgula (;)</strong>. 
+      Os arquivos já estão formatados com codificação UTF-8 para suportar acentos e caracteres especiais.
+    </div>
+  </div>
+</div>
+{% endblock %}

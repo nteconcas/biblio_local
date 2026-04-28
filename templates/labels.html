@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  @media (max-width: 768px) {
+    .label-footer { flex-direction: column !important; gap: 1rem !important; align-items: stretch !important; }
+    .label-footer .d-flex { flex-direction: column !important; gap: 0.5rem !important; align-items: stretch !important; }
+    .label-footer select { width: 100% !important; }
+    .label-footer .btn-lg { width: 100%; }
+    .label-footer #selected-count { text-align: center; }
+  }
+</style>
+<h2>🏷️ Gerador de Etiquetas</h2>
+<p class="text-muted">Selecione os livros para gerar as etiquetas com códigos de barras.</p>
+
+<form action="/api/generate_labels" method="POST" target="_blank">
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 40px;"><input type="checkbox" id="select-all"></th>
+              <th>Livro / Título</th>
+              <th>Cópias Disponíveis</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for b in books %}
+            <tr>
+              <td><input type="checkbox" class="book-check" data-book-id="{{ b.id }}"></td>
+              <td>
+                <strong>{{ b.title }}</strong><br>
+                <small class="text-muted">{{ b.author or 'Sem autor' }}</small>
+                {% if b.classification %}
+                  <span class="badge bg-light text-dark border ms-2" style="font-size: 0.7rem;">{{ b.classification }}</span>
+                {% endif %}
+              </td>
+              <td>
+                {% for c in b.copies %}
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input copy-check-{{ b.id }}" type="checkbox" name="copy_ids" value="{{ c.id }}" id="copy-{{ c.id }}">
+                  <label class="form-check-label small" for="copy-{{ c.id }}">
+                    <code>{{ c.barcode }}</code>
+                    {% if c.status == 'decommissioned' %}
+                      <span class="text-danger" style="font-size: 0.65rem;">(Baixa)</span>
+                    {% endif %}
+                  </label>
+                </div>
+                {% endfor %}
+              </td>
+              <td>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="toggleCopies({{ b.id }})">Selecionar Todas</button>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" class="text-center py-5 text-muted">
+                📚 Nenhum livro encontrado no acervo para gerar etiquetas.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card-footer d-flex justify-content-between align-items-center bg-white py-3 label-footer">
+      <div class="d-flex align-items-center gap-3">
+        <label class="fw-bold text-secondary small text-uppercase">Formato das Etiquetas:</label>
+        <select name="layout" class="form-select form-select-sm" style="width: 200px;">
+          <option value="3x10">A4 - 3 colunas x 10 linhas</option>
+          <option value="4x12">A4 - 4 colunas x 12 linhas</option>
+          <option value="2x5">A4 - 2 colunas x 5 linhas (Grande)</option>
+          <option value="single">Uma por linha</option>
+        </select>
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <span id="selected-count" class="text-primary fw-bold">0 itens selecionados</span>
+        <button type="submit" class="btn btn-primary btn-lg shadow-sm">🖨️ Gerar para Impressão</button>
+      </div>
+    </div>
+  </div>
+</form>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('select-all').addEventListener('change', function() {
+  const checks = document.querySelectorAll('input[name="copy_ids"]');
+  checks.forEach(c => c.checked = this.checked);
+  updateCount();
+});
+
+function toggleCopies(bookId) {
+  const checks = document.querySelectorAll('.copy-check-' + bookId);
+  const allChecked = Array.from(checks).every(c => c.checked);
+  checks.forEach(c => c.checked = !allChecked);
+  updateCount();
+}
+
+function updateCount() {
+  const count = document.querySelectorAll('input[name="copy_ids"]:checked').length;
+  document.getElementById('selected-count').innerText = `${count} itens selecionados`;
+}
+
+document.querySelectorAll('input[name="copy_ids"]').forEach(c => {
+  c.addEventListener('change', updateCount);
+});
+</script>
+{% endblock %}

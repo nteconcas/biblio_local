@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  @media (max-width: 768px) {
+    .report-user-header { flex-direction: column; align-items: flex-start !important; gap: 0.75rem; }
+    .report-user-header h2 { font-size: 1.2rem; }
+    .report-user-header div { display: flex; gap: 0.5rem; width: 100%; }
+    .report-user-header .btn { flex: 1; font-size: 0.8rem; padding: 0.4rem 0.6rem; }
+    .report-user-table .col-hide-mobile { display: none; }
+  }
+</style>
+<div class="d-flex justify-content-between align-items-center mb-4 report-user-header">
+  <h2>📊 Relatório: {{ user.username }}</h2>
+  <div>
+    <a href="/report/export/user/{{ user.id }}.csv" class="btn btn-outline-success me-2">📥 Exportar CSV</a>
+    <a href="/users" class="btn btn-secondary">← Voltar</a>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3"><div class="card text-center p-3"><h3>{{ stats.total }}</h3><small class="text-muted">Total de Empréstimos</small></div></div>
+  <div class="col-6 col-md-3"><div class="card text-center p-3"><h3>{{ stats.active }}</h3><small class="text-muted">Empréstimos Ativos</small></div></div>
+  <div class="col-6 col-md-3"><div class="card text-center p-3"><h3>{{ stats.returned }}</h3><small class="text-muted">Devolvidos</small></div></div>
+  <div class="col-6 col-md-3"><div class="card text-center p-3"><h3>R$ {{ "%.2f"|format(stats.fines) }}</h3><small class="text-muted">Multas Totais</small></div></div>
+</div>
+
+<h4>📋 Histórico de Empréstimos</h4>
+<div class="table-responsive bg-white rounded shadow-sm">
+  <table class="table table-hover mb-0 report-user-table">
+    <thead class="table-light">
+      <tr><th>Livro</th><th class="col-hide-mobile">Cópia</th><th>Retirada</th><th class="col-hide-mobile">Vencimento</th><th>Devolução</th><th class="col-hide-mobile">Renovações</th><th class="col-hide-mobile">Multa</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      {% for l in history %}
+      <tr>
+        <td>
+          {{ l.copy.book.title }}
+          <a href="/report/book/{{ l.copy.book.id }}" class="btn btn-sm btn-link p-0">📚</a>
+        </td>
+        <td class="col-hide-mobile"><code>{{ l.copy.barcode }}</code></td>
+        <td>{{ l.loan_date.strftime('%d/%m/%Y') }}</td>
+        <td class="col-hide-mobile">{{ l.due_date.strftime('%d/%m/%Y') }}</td>
+        <td>{{ l.return_date.strftime('%d/%m/%Y') if l.return_date else '-' }}</td>
+        <td class="col-hide-mobile">{{ l.renewals }}</td>
+        <td class="col-hide-mobile">R$ {{ "%.2f"|format(l.fine) }}</td>
+        <td>
+          <span class="badge bg-{{ 'success' if l.status=='returned' else 'warning' }}">
+            {{ 'Devolvido' if l.status=='returned' else 'Ativo' }}
+          </span>
+        </td>
+      </tr>
+      {% else %}
+      <tr><td colspan="8" class="text-center text-muted">Nenhum empréstimo registrado para este usuário.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

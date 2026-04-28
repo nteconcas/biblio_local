@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>⚙️ Configurações do Sistema</h2>
+
+<div class="card p-4">
+  <form action="/settings/update" method="POST">
+    <div class="row g-4">
+      <div class="col-12 col-md-6">
+        <label class="form-label">📚 Máximo de livros por usuário</label>
+        <input type="number" name="max_books_per_user" class="form-control" value="{{ settings.max_books_per_user }}" min="1" max="20" required>
+        <small class="text-muted">Quantos livros um usuário pode ter emprestados simultaneamente</small>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">📅 Duração do empréstimo (dias)</label>
+        <input type="number" name="loan_days" class="form-control" value="{{ settings.loan_days }}" min="1" max="60" required>
+        <small class="text-muted">Prazo padrão para devolução</small>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">🔄 Máximo de renovações</label>
+        <input type="number" name="max_renewals" class="form-control" value="{{ settings.max_renewals }}" min="0" max="10" required>
+        <small class="text-muted">Quantas vezes um empréstimo pode ser renovado</small>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">💰 Multa por dia de atraso (R$)</label>
+        <input type="number" name="fine_per_day" class="form-control" value="{{ "%.2f"|format(settings.fine_per_day) }}" min="0" step="0.01" required>
+        <small class="text-muted">Valor cobrado por dia de atraso na devolução</small>
+      </div>
+    </div>
+    <div class="mt-4">
+      <button type="submit" class="btn btn-primary">💾 Salvar Configurações</button>
+      <a href="/loans" class="btn btn-secondary">← Voltar</a>
+    </div>
+  </form>
+</div>
+
+<div class="alert alert-info mt-4">
+  <strong>💡 Dica:</strong> As alterações afetam apenas <em>novos</em> empréstimos. Empréstimos ativos mantêm as regras vigentes na data da retirada.
+</div>
+{% endblock %}

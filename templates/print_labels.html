@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Imprimir Etiquetas</title>
+    <style>
+        body { font-family: sans-serif; margin: 0; padding: 0.5cm; background-color: white; }
+        .grid { 
+            display: grid; 
+            {% if layout == '3x10' %}
+                grid-template-columns: repeat(3, 7cm); 
+                grid-auto-rows: 2.9cm;
+            {% elif layout == '4x12' %}
+                grid-template-columns: repeat(4, 5.2cm); 
+                grid-auto-rows: 2.4cm;
+            {% elif layout == '2x5' %}
+                grid-template-columns: repeat(2, 10.5cm); 
+                grid-auto-rows: 5.9cm;
+            {% else %}
+                grid-template-columns: 1fr;
+            {% endif %}
+            gap: 0.1cm;
+            justify-content: center;
+        }
+        .label { 
+            border: 1px dotted #ccc; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 5px;
+            overflow: hidden;
+            text-align: center;
+            page-break-inside: avoid;
+        }
+        .book-title { 
+            font-size: 8pt; 
+            font-weight: bold; 
+            width: 100%;
+            height: 1.2em;
+            overflow: hidden; 
+            white-space: nowrap; 
+            text-overflow: ellipsis;
+            margin-bottom: 2px;
+        }
+        .barcode-img { width: 90%; height: auto; max-height: 1.5cm; }
+        .barcode-text { font-family: monospace; font-size: 8pt; margin-top: 2px; }
+        
+        @media print {
+            .no-print { display: none; }
+            body { padding: 0; }
+            .label { border: 1px solid transparent; } /* Remove bordas na impressão se desejar */
+        }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="background: #f8f9fa; padding: 15px; margin-bottom: 20px; border: 1px solid #dee2e6;">
+        <button onclick="window.print()" style="padding: 10px 20px; cursor: pointer; background: #0d6efd; color: white; border: none; border-radius: 5px;">🖨️ Imprimir agora</button>
+        <span style="margin-left: 20px; color: #666;">Dica: Configure as margens como "Nenhuma" no diálogo de impressão.</span>
+    </div>
+    
+    <div class="grid">
+        {% for c in copies %}
+        <div class="label">
+            <div class="book-title">{{ c.book.title }}</div>
+            <div style="font-size: 7pt; margin-bottom: 2px; font-weight: bold; color: #555;">
+                {{ c.book.classification or '' }}
+            </div>
+            <img src="/barcode/{{ c.barcode }}" class="barcode-img">
+            <div class="barcode-text">{{ c.barcode }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</body>
+</html>

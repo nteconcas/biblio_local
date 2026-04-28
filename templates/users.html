@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  @media (max-width: 768px) {
+    .users-table .col-hide-mobile { display: none; }
+    .users-table td, .users-table th { font-size: 0.8rem; padding: 0.4rem; }
+  }
+</style>
+<h2>👥 Gestão de Usuários</h2>
+<div class="row g-4">
+  <div class="col-12 col-md-4">
+    <div class="card p-3">
+      <h5>Cadastrar Novo Usuário</h5>
+      <form action="/add_user" method="POST">
+        <input name="username" class="form-control mb-2" placeholder="Nome Completo" required>
+        <input name="registration" class="form-control mb-2" placeholder="Matrícula">
+        <select name="role" id="user-role" class="form-select mb-2" onchange="togglePasswordField()">
+          <option value="member">Leitor</option>
+          <option value="librarian">Bibliotecário</option>
+          <option value="admin">Administrador</option>
+        </select>
+        <div id="password-field" style="display: none;">
+          <input name="password" type="password" class="form-control mb-2" placeholder="Senha de Acesso">
+        </div>
+        <button class="btn btn-primary w-100">Criar Usuário</button>
+      </form>
+      <script>
+        function togglePasswordField() {
+          const role = document.getElementById('user-role').value;
+          const field = document.getElementById('password-field');
+          field.style.display = (role === 'member') ? 'none' : 'block';
+        }
+      </script>
+    </div>
+  </div>
+  <div class="col-12 col-md-8">
+    <div class="table-responsive bg-white rounded shadow-sm border">
+      <table class="table table-hover align-middle mb-0 users-table">
+        <thead class="bg-light text-secondary small text-uppercase">
+          <tr><th class="col-hide-mobile">ID</th><th>Usuário</th><th>Matrícula</th><th>Perfil</th><th>Ações</th></tr>
+        </thead>
+        <tbody class="border-top-0">
+        {% for u in users %}
+          <tr>
+            <td class="col-hide-mobile"><small class="text-muted">{{ u.id }}</small></td>
+            <td><strong>{{ u.username }}</strong></td>
+            <td><code class="small text-muted">{{ u.registration_number or '-' }}</code></td>
+            <td><span class="badge rounded-pill bg-{{ 'primary' if u.role=='admin' else 'info' if u.role=='librarian' else 'secondary' }}">{{ u.role.upper() }}</span></td>
+            <td>
+              <div class="btn-group shadow-sm">
+                <button class="btn btn-sm btn-outline-primary btn-edit-user"
+                        data-id="{{ u.id }}"
+                        data-username="{{ u.username|forceescape }}"
+                        data-registration="{{ (u.registration_number or "")|forceescape }}"
+                        data-role="{{ u.role }}">
+                  ✏️ Editar
+                </button>
+                <a href="/report/user/{{ u.id }}" class="btn btn-sm btn-outline-secondary">📊 Histórico</a>
+              </div>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal de Edição de Usuário -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">✏️ Editar Usuário</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editUserForm" method="POST">
+        <div class="modal-body">
+          <label class="form-label">Nome Completo</label>
+          <input name="username" id="edit-user-username" class="form-control mb-3" required>
+          
+          <label class="form-label">Matrícula</label>
+          <input name="registration" id="edit-user-registration" class="form-control mb-3">
+          
+          <label class="form-label">Perfil de Acesso</label>
+          <select name="role" id="edit-user-role" class="form-select mb-3" onchange="toggleEditPassword()">
+            <option value="member">Leitor</option>
+            <option value="librarian">Bibliotecário</option>
+            <option value="admin">Administrador</option>
+          </select>
+          
+          <div id="edit-password-field" style="display: none;">
+            <label class="form-label text-danger">Alterar Senha (deixe em branco para manter)</label>
+            <input name="password" type="password" class="form-control mb-3" placeholder="Nova senha">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+          <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const editModalEl = document.getElementById('editUserModal');
+    if (editModalEl) {
+        window.userEditModal = new bootstrap.Modal(editModalEl);
+    }
+});
+const userEditForm = document.getElementById('editUserForm');
+
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('.btn-edit-user');
+  if (btn) {
+    const uid = btn.getAttribute('data-id');
+    
+    document.getElementById('edit-user-username').value = btn.getAttribute('data-username');
+    document.getElementById('edit-user-registration').value = btn.getAttribute('data-registration');
+    document.getElementById('edit-user-role').value = btn.getAttribute('data-role');
+    
+    userEditForm.action = `/edit_user/${uid}`;
+    toggleEditPassword();
+    window.userEditModal.show();
+  }
+});
+
+function toggleEditPassword() {
+  const role = document.getElementById('edit-user-role').value;
+  document.getElementById('edit-password-field').style.display = (role === 'member') ? 'none' : 'block';
+}
+</script>
+{% endblock %}
