@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
 from flask_login import login_user, logout_user, login_required
 from models import User
 from extensions import db
@@ -10,11 +10,15 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
-        user = User.query.filter_by(username=username).first()
-        if user and user.check_password(password):
-            login_user(user)
-            return redirect(url_for('loans.loans_page'))
-        flash('Credenciais inválidas.', 'error')
+        try:
+            user = User.query.filter_by(username=username).first()
+            if user and user.check_password(password):
+                login_user(user)
+                return redirect(url_for('loans.loans_page'))
+            flash('Credenciais inválidas.', 'error')
+        except Exception:
+            current_app.logger.exception('Falha ao processar login.')
+            flash('Erro ao acessar o banco ou validar o login.', 'error')
     return render_template('login.html')
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
