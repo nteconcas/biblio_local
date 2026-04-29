@@ -1,5 +1,6 @@
 import os
 import time
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 from flask import Flask, redirect, url_for
 from flask_login import current_user
@@ -35,6 +36,39 @@ def get_database_url():
     name = os.environ.get('DB_NAME', 'biblio_db')
     return f'postgresql://{user}:{pwd}@{host}:{port}/{name}'
 
+def ensure_database_exists(db_url):
+    """Create target PostgreSQL database on first deploy when possible."""
+    parsed = urlparse(db_url)
+    if not parsed.scheme.startswith('postgresql'):
+        return
+
+    db_name = parsed.path.lstrip('/')
+    if not db_name:
+        return
+
+    from sqlalchemy import create_engine, text
+
+    admin_path = '/postgres'
+    admin_url = parsed._replace(path=admin_path).geturl()
+    engine = create_engine(admin_url, isolation_level='AUTOCOMMIT')
+
+    try:
+        with engine.connect() as conn:
+            exists = conn.execute(
+                text("SELECT 1 FROM pg_database WHERE datname = :name"),
+                {"name": db_name}
+            ).scalar()
+            if exists:
+                return
+            conn.execute(text(f'CREATE DATABASE "{db_name}"'))
+            print(f'Banco de dados "{db_name}" criado com sucesso.')
+    except Exception as exc:
+        # If credentials don't allow CREATE DATABASE, keep startup flow
+        # and let the normal connection error guide operations.
+        print(f'Nao foi possivel garantir a criacao do banco "{db_name}": {exc}')
+    finally:
+        engine.dispose()
+
 def create_app():
     app = Flask(__name__)
 
@@ -48,6 +82,7 @@ def create_app():
     )
     
     db_url = get_database_url()
+    ensure_database_exists(db_url)
 
     preferred_scheme = os.environ.get('PREFERRED_URL_SCHEME', 'http')
     secure_cookies = env_bool('COOKIE_SECURE', preferred_scheme == 'https')
