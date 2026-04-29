@@ -21,6 +21,20 @@ def env_bool(name, default=False):
         return default
     return value.strip().lower() in ('1', 'true', 'yes', 'on')
 
+def get_database_url():
+    db_url = os.environ.get('DATABASE_URL', '').strip()
+    if db_url:
+        if db_url.startswith('postgres://'):
+            return db_url.replace('postgres://', 'postgresql://', 1)
+        return db_url
+
+    user = os.environ.get('DB_USER', 'postgres')
+    pwd = os.environ.get('DB_PASSWORD', 'postgres')
+    host = os.environ.get('DB_HOST', 'localhost')
+    port = os.environ.get('DB_PORT', '5432')
+    name = os.environ.get('DB_NAME', 'biblio_db')
+    return f'postgresql://{user}:{pwd}@{host}:{port}/{name}'
+
 def create_app():
     app = Flask(__name__)
 
@@ -33,19 +47,7 @@ def create_app():
         x_port=trusted_proxies
     )
     
-    # Prioridade para DATABASE_URL (comum em Heroku/Render)
-    # Senão, monta a string a partir das variáveis individuais
-    db_url = os.environ.get('DATABASE_URL')
-    if db_url and db_url.startswith("postgres://"):
-        db_url = db_url.replace("postgres://", "postgresql://", 1)
-    
-    if not db_url:
-        user = os.environ.get('DB_USER', 'postgres')
-        pwd = os.environ.get('DB_PASSWORD', 'postgres')
-        host = os.environ.get('DB_HOST', 'localhost')
-        port = os.environ.get('DB_PORT', '5432')
-        name = os.environ.get('DB_NAME', 'biblio_db')
-        db_url = f"postgresql://{user}:{pwd}@{host}:{port}/{name}"
+    db_url = get_database_url()
 
     preferred_scheme = os.environ.get('PREFERRED_URL_SCHEME', 'http')
     secure_cookies = env_bool('COOKIE_SECURE', preferred_scheme == 'https')

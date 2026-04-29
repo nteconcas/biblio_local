@@ -24,7 +24,7 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-biblio_db}
+      DATABASE_URL: "${DATABASE_URL:-postgresql://postgres:postgres@db:5432/biblio_db}"
       SECRET_KEY: ${SECRET_KEY:-troque-esta-chave-em-producao}
       PORT: 5000
       PREFERRED_URL_SCHEME: ${PREFERRED_URL_SCHEME:-http}
