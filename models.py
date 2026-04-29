@@ -11,7 +11,10 @@ class User(UserMixin, db.Model):
     role = db.Column(db.String(20), default='member')
 
     def set_password(self, pwd): self.password_hash = generate_password_hash(pwd)
-    def check_password(self, pwd): return check_password_hash(self.password_hash, pwd)
+    def check_password(self, pwd):
+        if not self.password_hash or not pwd:
+            return False
+        return check_password_hash(self.password_hash, pwd)
 
 class Book(db.Model):
     id = db.Column(db.Integer, primary_key=True)

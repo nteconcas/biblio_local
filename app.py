@@ -123,11 +123,19 @@ def create_app():
         except Exception:
             db.session.rollback()
 
-        # Criar admin padrão
-        if not User.query.filter_by(username='admin').first():
-            admin = User(username='admin', role='admin')
-            admin.set_password('admin123')
+        admin_username = os.environ.get('ADMIN_USERNAME', 'admin').strip() or 'admin'
+        admin_password = os.environ.get('ADMIN_PASSWORD', 'admin123').strip() or 'admin123'
+        sync_admin_password = env_bool('SYNC_ADMIN_PASSWORD', False)
+
+        # Garante um admin funcional mesmo ao reaproveitar banco remoto existente.
+        admin = User.query.filter_by(username=admin_username).first()
+        if not admin:
+            admin = User(username=admin_username, role='admin')
+            admin.set_password(admin_password)
             db.session.add(admin)
+        elif admin.role == 'admin' and (not admin.password_hash or sync_admin_password):
+            admin.set_password(admin_password)
+
         # Configurações padrão
         defaults = [
             ('max_books_per_user', '3'),
